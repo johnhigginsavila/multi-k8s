@@ -2,6 +2,10 @@ sudo: required
 # docker run -it -v $(pwd):/app ruby:2.3 sh
 services:
   - docker
+env:
+  global:
+    - SHA=$(git rev-parse HEAD)
+    - CLOUDSDK_CORE_DISABLE_PROMPTS=1
 before_install:
   - openssl aes-256-cbc -K $encrypted_d0ce95b39e38_key -iv $encrypted_d0ce95b39e38_iv -in service-account.json.enc -out service-account.json -d
   - curl https://sdk.cloud.google.com | bash > /dev/null;
@@ -11,3 +15,12 @@ before_install:
   - gcloud config set project multi-k8s-219021
   - gcloud config set compute/zone us-central1-a
   - gcloud container clusters get-credentials multi-cluster
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - docker build -t johnhigginsavila/react-test -f ./client/Dockerfile.dev ./client
+script:
+  - docker run johnhigginsavila/react-test npm run test -- --coverage
+deploy:
+  provider: script
+  script: bash ./deploy.sh
+  on:
+    branch: master
